@@ -9,6 +9,9 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 
+/**
+ * An ExtraData implementation backed by the filesystem.
+ */
 public class ExtraDataFS implements ExtraData {
     public static final String DEFAULT_FILE_NAME = ".extraData";
     private final CharSequence fileName;
@@ -23,8 +26,12 @@ public class ExtraDataFS implements ExtraData {
     public ExtraDataFS(CharSequence rootFolder, CharSequence fileName) throws IOException, SharkException {
         this.rootFolderName = rootFolder;
         // hide file in any case
-        if(fileName.charAt(0) != '.') this.fileName = "." + fileName;
-        else this.fileName = fileName;
+        if(fileName.charAt(0) != '.') {
+            this.fileName = "." + fileName;
+        }
+        else {
+            this.fileName = fileName;
+        }
         File rootFolderFile = new File(rootFolder.toString());
         if(!rootFolderFile.exists()) {
             // create
@@ -50,7 +57,7 @@ public class ExtraDataFS implements ExtraData {
     private long timeStampSyncExtraData = -1; // never saved anything
 
     private void extraDataSync() throws IOException, SharkException {
-        InputStream is = null;
+        InputStream is;
         try {
             is = new FileInputStream(this.getExtraFile());
         }
@@ -96,7 +103,7 @@ public class ExtraDataFS implements ExtraData {
      * @throws ASAPException
      */
     public void restoreExtraData() throws IOException, SharkException {
-        InputStream is = null;
+        InputStream is;
         try {
             is = new FileInputStream(this.getExtraFile());
         }
@@ -129,11 +136,7 @@ public class ExtraDataFS implements ExtraData {
         is.close();
     }
 
-    /**
-     * Make a value persistent with key
-     * @param key
-     * @param value
-     */
+    @Override
     public void putExtra(CharSequence key, byte[] value) throws IOException, SharkException {
         this.extraDataSync();
         this.extraData.put(key, value);
@@ -160,15 +163,12 @@ public class ExtraDataFS implements ExtraData {
         this.putExtra(key, baos.toByteArray());
     }
 
-    /**
-     * Return a value - can be null if null was set as value.
-     * @param key
-     * @throws ASAPException key never used in putExtra
-     */
     public byte[] getExtra(CharSequence key) throws IOException, SharkException {
         this.restoreExtraData();
         byte[] value = this.extraData.get(key);
-        if(value == null) throw new SharkException("no value for key" + key);
+        if (value == null) {
+            throw new SharkException("no value for key " + key);
+        }
         return value;
     }
 
@@ -184,6 +184,7 @@ public class ExtraDataFS implements ExtraData {
         return ASAPSerialization.readCharSequenceParameter(bais);
     }
 
+    @Override
     public Set<CharSequence> getExtraCharSequenceSetParameter(CharSequence key) throws IOException, SharkException {
         ByteArrayInputStream bais = new ByteArrayInputStream(this.getExtra(key));
         return ASAPSerialization.readCharSequenceSetParameter(bais);
