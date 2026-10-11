@@ -77,6 +77,12 @@ public class ASAPCryptoAlgorithms {
         return baos.toByteArray();
     }
 
+    /**
+     * Constructs a SecretKey from the given encoded key with the given store's symmetric encryption algorithm.
+     * @param encodedSymmetricKey key material
+     * @param ASAPKeyStore key store to use
+     * @return the symmetric key
+     */
     public static SecretKey createSymmetricKey(byte[] encodedSymmetricKey,
                         ASAPKeyStore ASAPKeyStore) {
         return new SecretKeySpec(encodedSymmetricKey, ASAPKeyStore.getSymmetricKeyType());
@@ -140,12 +146,26 @@ public class ASAPCryptoAlgorithms {
         byte[] getEncryptedContent();
     }
 
+    /**
+     * Constructs an EncryptedMessagePackage from the given data.
+     * @param encryptedPackage the data representing the package
+     * @return the parsed package
+     * @throws IOException if an I/O error occurs
+     * @throws ASAPException if the end of the stream is reached
+     */
     public static EncryptedMessagePackage parseEncryptedMessagePackage(byte[] encryptedPackage)
             throws IOException, ASAPException {
         ByteArrayInputStream bais = new ByteArrayInputStream(encryptedPackage);
         return ASAPCryptoAlgorithms.parseEncryptedMessagePackage(bais);
     }
 
+    /**
+     * Constructs an EncryptedMessagePackage by reading data from the given input stream.
+     * @param is the stream to read from
+     * @return the parsed package
+     * @throws IOException if an I/O error occurs
+     * @throws ASAPException if the end of the stream is reached
+     */
     public static EncryptedMessagePackage parseEncryptedMessagePackage(InputStream is) throws IOException, ASAPException {
         String recipient = ASAPSerialization.readCharSequenceParameter(is);
         byte[] encryptedSymmetricKey = ASAPSerialization.readByteArray(is);
@@ -161,15 +181,27 @@ public class ASAPCryptoAlgorithms {
         };
     }
 
+    /**
+     * Writes the given EncryptedMessagePackage to the given output stream.
+     * @param encryptedPackage the package to write
+     * @param os the stream to write to
+     * @throws IOException if an I/O error occurs
+     */
     public static void writeEncryptedMessagePackage(EncryptedMessagePackage encryptedPackage, OutputStream os)
-            throws IOException, ASAPException {
+            throws IOException {
         ASAPSerialization.writeCharSequenceParameter(encryptedPackage.getReceiver(), os);
         ASAPSerialization.writeByteArray(encryptedPackage.getEncryptedSymmetricKey(), os);
         ASAPSerialization.writeByteArray(encryptedPackage.getEncryptedContent(), os);
     }
 
+    /**
+     * Returns a byte representation of the given EncryptedMessagePackage.
+     * @param encryptedPackage the package to serialize
+     * @return the serialized package
+     * @throws IOException if an I/O error occurs
+     */
     public static byte[] getEncryptedMessagePackageAsBytes(EncryptedMessagePackage encryptedPackage)
-            throws IOException, ASAPException {
+            throws IOException {
 
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         writeEncryptedMessagePackage(encryptedPackage, baos);
@@ -245,62 +277,80 @@ public class ASAPCryptoAlgorithms {
     /**
      * Decrypts the given data asymmetrically using the private key of the given store's owner.
      * @param encryptedBytes the data to encrypt
-     * @param ASAPKeyStore this device's key store
+     * @param keyStore this device's key store
      * @return the decrypted data
      * @throws ASAPSecurityException if decryption fails, e.g. the key store's algorithm is not available in the current
      * environment or the data was not encrypted with the key store owner's public key
      */
-    public static byte[] decryptAsymmetric(byte[] encryptedBytes, ASAPKeyStore ASAPKeyStore)
+    public static byte[] decryptAsymmetric(byte[] encryptedBytes, ASAPKeyStore keyStore)
             throws ASAPSecurityException {
         try {
-            Cipher cipher = Cipher.getInstance(ASAPKeyStore.getAsymmetricEncryptionAlgorithm());
-            cipher.init(Cipher.DECRYPT_MODE, ASAPKeyStore.getPrivateKey());
+            Cipher cipher = Cipher.getInstance(keyStore.getAsymmetricEncryptionAlgorithm());
+            cipher.init(Cipher.DECRYPT_MODE, keyStore.getPrivateKey());
             return cipher.doFinal(encryptedBytes);
         } catch (NoSuchAlgorithmException | InvalidKeyException | NoSuchPaddingException
                 | IllegalBlockSizeException | BadPaddingException e) {
             e.printStackTrace();
             throw new ASAPSecurityException("asymmetric decryption failed: "
-                    + ASAPKeyStore.getAsymmetricEncryptionAlgorithm(), e);
-        }
-    }
-
-    public static byte[] sign(byte[] bytes2Sign, ASAPKeyStore ASAPKeyStore)
-            throws ASAPSecurityException {
-
-        try {
-            Signature signature = Signature.getInstance(ASAPKeyStore.getAsymmetricSigningAlgorithm());
-            signature.initSign(ASAPKeyStore.getPrivateKey());
-            signature.update(bytes2Sign);
-            return signature.sign();
-        } catch (InvalidKeyException | SignatureException | NoSuchAlgorithmException e) {
-            e.printStackTrace();
-            throw new ASAPSecurityException("signing failed: " + ASAPKeyStore.getAsymmetricSigningAlgorithm(), e);
-        }
-    }
-
-    public static boolean verify(byte[] signedData, byte[] signatureBytes, String sender,
-                        ASAPKeyStore ASAPKeyStore) throws ASAPSecurityException {
-
-        PublicKey publicKey = ASAPKeyStore.getPublicKey(sender);
-        if(publicKey == null) return false;
-
-        try {
-            Signature signature = Signature.getInstance(ASAPKeyStore.getAsymmetricSigningAlgorithm());
-            signature.initVerify(publicKey); // init with private key
-            signature.update(signedData); // feed with signed data
-            return signature.verify(signatureBytes); // check against signature
-        } catch (NoSuchAlgorithmException | SignatureException | InvalidKeyException e) {
-            e.printStackTrace();
-            throw new ASAPSecurityException("verifying failed: " + ASAPKeyStore.getAsymmetricSigningAlgorithm(), e);
+                    + keyStore.getAsymmetricEncryptionAlgorithm(), e);
         }
     }
 
     /**
-     * Produces a Base 64 fingerprint with SHA256.
-     * This fingerprint is not necessarily identical to others.
-     * It an ASAP standard, though.
-     * @param publicKey
-     * @return
+     * Creates and returns a signature for the given byte data. The given key store's default hashing and encryption
+     * algorithms are used.
+     * @param bytes2Sign data to sign
+     * @param keyStore key store of this device, providing algorithms and the owner's private key
+     * @return the signature
+     * @throws ASAPSecurityException if signing fails, e.g. due to the key store's algorithm not being available in the
+     * environment or an invalid private key
+     */
+    public static byte[] sign(byte[] bytes2Sign, ASAPKeyStore keyStore)
+            throws ASAPSecurityException {
+        try {
+            Signature signature = Signature.getInstance(keyStore.getAsymmetricSigningAlgorithm());
+            signature.initSign(keyStore.getPrivateKey());
+            signature.update(bytes2Sign);
+            return signature.sign();
+        } catch (InvalidKeyException | SignatureException | NoSuchAlgorithmException e) {
+            e.printStackTrace();
+            throw new ASAPSecurityException("signing failed: " + keyStore.getAsymmetricSigningAlgorithm(), e);
+        }
+    }
+
+    /**
+     * Verifies the given signature against the given message, using the sender's public key from the key store.
+     * @param signedData the message
+     * @param signatureBytes the signature
+     * @param sender the ID of the message's sender
+     * @param keyStore the key store of this device
+     * @return true if and only if the sender's public key is available and the signature is valid
+     * @throws ASAPSecurityException if verification fails, e.g. due to the key store's algorithm not being available in the
+     * environment or an invalid public key
+     */
+    public static boolean verify(byte[] signedData, byte[] signatureBytes, String sender,
+                        ASAPKeyStore keyStore) throws ASAPSecurityException {
+        PublicKey publicKey = keyStore.getPublicKey(sender);
+        if(publicKey == null) {
+            return false;
+        }
+
+        try {
+            Signature signature = Signature.getInstance(keyStore.getAsymmetricSigningAlgorithm());
+            signature.initVerify(publicKey);
+            signature.update(signedData);
+            return signature.verify(signatureBytes);
+        } catch (NoSuchAlgorithmException | SignatureException | InvalidKeyException e) {
+            e.printStackTrace();
+            throw new ASAPSecurityException("verifying failed: " + keyStore.getAsymmetricSigningAlgorithm(), e);
+        }
+    }
+
+    /**
+     * Computes a Base64 encoded SHA256 fingerprint of the given public key.
+     * @param publicKey the public key to encode
+     * @return the key's fingerprint
+     * @throws NoSuchAlgorithmException if SHA256 is not available
      */
     public static String getFingerprint(PublicKey publicKey) throws NoSuchAlgorithmException {
         MessageDigest digest = MessageDigest.getInstance("SHA-256");
