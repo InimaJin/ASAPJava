@@ -17,7 +17,7 @@ import java.util.HashMap;
 
 /**
  * A key store that lives entirely in memory.
- * Key pair generation for the owner is currently limited to RSA.
+ * Key pair generation for the owner is performed lazily and currently limited to RSA with a key size of 2048 bits.
  */
 public class InMemoASAPKeyStore implements ASAPKeyStore {
     private static final CharSequence ASAP_KEYSTORE_MEMENTO_KEY = "asapKeyStoreMemento";

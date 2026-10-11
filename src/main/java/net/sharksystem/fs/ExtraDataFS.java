@@ -1,13 +1,11 @@
 package net.sharksystem.fs;
 
 import net.sharksystem.SharkException;
-import net.sharksystem.asap.ASAPException;
 import net.sharksystem.asap.utils.ASAPSerialization;
 
 import java.io.*;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * An ExtraData implementation backed by the filesystem.
@@ -19,10 +17,23 @@ public class ExtraDataFS implements ExtraData {
 
     private Map<CharSequence, byte[]> extraData = new HashMap<>();
 
+    /**
+     * Constructs a new ExtraDataFS object, configured to use the default file name and given folder.
+     * @param rootFolderName the folder that will contain the data file
+     * @throws SharkException if the data file already exists and EOF is reached while reading from it
+     * @throws IOException if the data file already exists and an I/O error occurs while reading from it
+     */
     public ExtraDataFS(CharSequence rootFolderName) throws SharkException, IOException {
         this(rootFolderName, DEFAULT_FILE_NAME);
     }
 
+    /**
+     * Constructs a new ExtraDataFS object, configured to use the given file name and folder.
+     * @param rootFolder the folder that will contain the data file
+     * @param fileName the name of the data file. If not already done, a period will be appended to hide the file.
+     * @throws IOException if the data file already exists and an I/O error occurs while reading from it
+     * @throws SharkException if the data file already exists and EOF is reached while reading from it
+     */
     public ExtraDataFS(CharSequence rootFolder, CharSequence fileName) throws IOException, SharkException {
         this.rootFolderName = rootFolder;
         // hide file in any case
@@ -57,24 +68,18 @@ public class ExtraDataFS implements ExtraData {
     private long timeStampSyncExtraData = -1; // never saved anything
 
     private void extraDataSync() throws IOException, SharkException {
-        InputStream is;
-        try {
-            is = new FileInputStream(this.getExtraFile());
-        }
-        catch(IOException ioEx) {
-            // no such file - save it instead - there is no conflict
+        if (!this.getExtraFile().exists()) {
             this.saveExtraData();
-            return;
+        } else {
+            this.restoreExtraData();
         }
-
-        // discard local changes and read from file
-        this.restoreExtraData();
     }
 
+    // FIXME: This probably shouldn't be public? It doesn't perform syncing, which might result in data races.
     public void saveExtraData() throws IOException {
         OutputStream os = new FileOutputStream(this.getExtraFile());
 
-        // write time stamp
+        // write metadata
         this.timeStampSyncExtraData = System.currentTimeMillis();
         ASAPSerialization.writeLongParameter(this.timeStampSyncExtraData, os);
         ASAPSerialization.writeNonNegativeIntegerParameter(this.extraData.size(), os);
