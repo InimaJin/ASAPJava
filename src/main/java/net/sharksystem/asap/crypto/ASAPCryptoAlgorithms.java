@@ -133,6 +133,8 @@ public class ASAPCryptoAlgorithms {
         String peerAString = peerA.toString();
         String peerBString = peerB.toString();
 
+        /* TODO: Equality seems to be case insensitive in this method, but not in other contexts,
+            such as getPublicKey(CharSequence subjectID) in InMemoASAPKeyStore, where the casing of a peerID does indeed matter. */
         return peerAString.equalsIgnoreCase(peerBString);
     }
 

@@ -7,7 +7,7 @@ import java.security.PrivateKey;
 import java.security.PublicKey;
 
 /**
- * Defines basic methods and constants necessary for encryption/ decryption and signing/ verification.
+ * Basic methods and constants necessary for encryption/ decryption and signing/ verification.
  */
 public interface ASAPCryptoParameterStorage {
     String DEFAULT_ASYMMETRIC_ENCRYPTION_ALGORITHM = "RSA/ECB/PKCS1Padding";
