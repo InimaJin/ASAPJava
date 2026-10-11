@@ -1,7 +1,10 @@
 package net.sharksystem.fs;
 
 import net.sharksystem.SharkException;
+import net.sharksystem.asap.utils.ASAPSerialization;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Set;
 
@@ -25,7 +28,11 @@ public interface ExtraData {
      * @throws IOException if the datum cannot be written
      * @throws SharkException if a (de-)serialization error occurs, e.g. the underlying data is corrupted
      */
-    void putExtra(CharSequence key, Integer value) throws IOException, SharkException;
+    default void putExtra(CharSequence key, Integer value) throws IOException, SharkException {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        ASAPSerialization.writeIntegerParameter(value, baos);
+        putExtra(key, baos.toByteArray());
+    }
 
     /**
      * Stores the given char sequence and associates it with the given key.
@@ -34,7 +41,11 @@ public interface ExtraData {
      * @throws IOException if the datum cannot be written
      * @throws SharkException if a (de-)serialization error occurs, e.g. the underlying data is corrupted
      */
-    void putExtra(CharSequence key, CharSequence value) throws IOException, SharkException;
+    default void putExtra(CharSequence key, CharSequence value) throws IOException, SharkException {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        ASAPSerialization.writeCharSequenceParameter(value, baos);
+        putExtra(key, baos.toByteArray());
+    }
 
     /**
      * Stores the given set f char sequences and associates it with the given key.
@@ -43,7 +54,11 @@ public interface ExtraData {
      * @throws IOException if the datum cannot be written
      * @throws SharkException if a (de-)serialization error occurs, e.g. the underlying data is corrupted
      */
-    void putExtra(CharSequence key, Set<CharSequence> value) throws IOException, SharkException;
+    default void putExtra(CharSequence key, Set<CharSequence> value) throws IOException, SharkException {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        ASAPSerialization.writeCharSequenceSetParameter(value, baos);
+        putExtra(key, baos.toByteArray());
+    }
 
     /**
      * Returns the byte array associated with the given key.
@@ -61,7 +76,11 @@ public interface ExtraData {
      * @throws IOException if an I/O error occurs
      * @throws SharkException if no such key exists
      */
-    int getExtraInteger(CharSequence key) throws IOException, SharkException;
+    default int getExtraInteger(CharSequence key) throws IOException, SharkException {
+        byte[] value = getExtra(key);
+        ByteArrayInputStream bais = new ByteArrayInputStream(value);
+        return ASAPSerialization.readIntegerParameter(bais);
+    }
 
     /**
      * Returns the set of char sequences associated with the given key.
@@ -70,7 +89,11 @@ public interface ExtraData {
      * @throws IOException if an I/O error occurs
      * @throws SharkException if no such key exists
      */
-    Set<CharSequence> getExtraCharSequenceSetParameter(CharSequence key) throws IOException, SharkException;
+    default Set<CharSequence> getExtraCharSequenceSetParameter(CharSequence key) throws IOException, SharkException {
+        byte[] value = getExtra(key);
+        ByteArrayInputStream bais = new ByteArrayInputStream(value);
+        return ASAPSerialization.readCharSequenceSetParameter(bais);
+    }
 
     /**
      * Returns the string value associated with the given key.
@@ -79,7 +102,11 @@ public interface ExtraData {
      * @throws IOException if an I/O error occurs
      * @throws SharkException if no such key exists
      */
-    String getExtraString(CharSequence key) throws IOException, SharkException;
+    default String getExtraString(CharSequence key) throws IOException, SharkException {
+        byte[] value = getExtra(key);
+        ByteArrayInputStream bais = new ByteArrayInputStream(value);
+        return ASAPSerialization.readCharSequenceParameter(bais);
+    }
 
     /**
      * Deletes all data from storage.

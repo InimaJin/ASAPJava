@@ -67,13 +67,6 @@ public class ExtraDataFS implements ExtraData {
             return;
         }
 
-        // read time stamp
-        long timeStampSaved = ASAPSerialization.readLongParameter(is);
-
-        if(this.timeStampSyncExtraData < timeStampSaved) {
-            // there is an external copy that was created after our last sync
-        }
-
         // discard local changes and read from file
         this.restoreExtraData();
     }
@@ -98,9 +91,9 @@ public class ExtraDataFS implements ExtraData {
     }
 
     /**
-     * Always restore. If there is no such file - write it.
-     * @throws IOException
-     * @throws ASAPException
+     * Ensures that this ExtraData holds the most recent data from the file system.
+     * @throws IOException if an I/O error occurs
+     * @throws SharkException if EOF is reached
      */
     public void restoreExtraData() throws IOException, SharkException {
         InputStream is;
@@ -113,18 +106,19 @@ public class ExtraDataFS implements ExtraData {
         }
 
         long timeStampSaved = ASAPSerialization.readLongParameter(is);
+        // false if the data file contains more recent data than this ExtraData,
+        // true if this ExtraData is up-to-date
         if(timeStampSaved == this.timeStampSyncExtraData) {
             is.close();
             return;
         }
 
-        // something changed - get a fresh copy
         this.timeStampSyncExtraData = timeStampSaved;
 
         this.extraData = new HashMap<>();
         int counter = ASAPSerialization.readIntegerParameter(is);
 
-        while(counter-- > 0) {
+        for (int i = 0; i < counter; i++) {
             // read key
             CharSequence key = ASAPSerialization.readCharSequenceParameter(is);
             // value
@@ -144,25 +138,6 @@ public class ExtraDataFS implements ExtraData {
     }
 
     @Override
-    public void putExtra(CharSequence key, Integer value) throws IOException, SharkException {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        ASAPSerialization.writeIntegerParameter(value, baos);
-        this.putExtra(key, baos.toByteArray());
-    }
-
-    @Override
-    public void putExtra(CharSequence key, CharSequence value) throws IOException, SharkException {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        ASAPSerialization.writeCharSequenceParameter(value, baos);
-        this.putExtra(key, baos.toByteArray());
-    }
-
-    public void putExtra(CharSequence key, Set<CharSequence> value) throws IOException, SharkException {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        ASAPSerialization.writeCharSequenceSetParameter(value, baos);
-        this.putExtra(key, baos.toByteArray());
-    }
-
     public byte[] getExtra(CharSequence key) throws IOException, SharkException {
         this.restoreExtraData();
         byte[] value = this.extraData.get(key);
@@ -170,24 +145,6 @@ public class ExtraDataFS implements ExtraData {
             throw new SharkException("no value for key " + key);
         }
         return value;
-    }
-
-    @Override
-    public int getExtraInteger(CharSequence key) throws IOException, SharkException {
-        ByteArrayInputStream bais = new ByteArrayInputStream(this.getExtra(key));
-        return ASAPSerialization.readIntegerParameter(bais);
-    }
-
-    @Override
-    public String getExtraString(CharSequence key) throws IOException, SharkException {
-        ByteArrayInputStream bais = new ByteArrayInputStream(this.getExtra(key));
-        return ASAPSerialization.readCharSequenceParameter(bais);
-    }
-
-    @Override
-    public Set<CharSequence> getExtraCharSequenceSetParameter(CharSequence key) throws IOException, SharkException {
-        ByteArrayInputStream bais = new ByteArrayInputStream(this.getExtra(key));
-        return ASAPSerialization.readCharSequenceSetParameter(bais);
     }
 
     @Override
